@@ -15,6 +15,7 @@ from poetry.packages.locker import Locker
 from poetry.packages.project_package import ProjectPackage
 from poetry.plugins.plugin_manager import PluginManager
 from poetry.poetry import Poetry
+from poetry.repositories.codeartifact_repository import CodeArtifactRepository
 
 
 if TYPE_CHECKING:
@@ -57,11 +58,14 @@ class Factory(BaseFactory):
         # Load local sources
         repositories = {}
         existing_repositories = config.get("repositories", {})
+        print(existing_repositories)
         for source in base_poetry.pyproject.poetry_config.get("source", []):
+            print(source)
             name = source.get("name")
-            url = source.get("url")
-            if name and url and name not in existing_repositories:
-                repositories[name] = {"url": url}
+            repositories[name] = dict(source)
+            print(existing_repositories.get(name, {}))
+            repositories[name].update(existing_repositories.get(name, {}))
+            print(repositories)
 
         config.merge({"repositories": repositories})
 
@@ -160,22 +164,37 @@ class Factory(BaseFactory):
         from poetry.utils.helpers import get_cert
         from poetry.utils.helpers import get_client_cert
 
-        if "url" not in source:
-            raise RuntimeError("Unsupported source specified")
-
         # PyPI-like repository
         if "name" not in source:
             raise RuntimeError("Missing [name] in source.")
-        name = source["name"]
-        url = source["url"]
 
-        return LegacyRepository(
-            name,
-            url,
-            config=auth_config,
-            cert=get_cert(auth_config, name),
-            client_cert=get_client_cert(auth_config, name),
-        )
+        print(source)
+        repo_type = source.get("type", "legacy")
+        name = source["name"]
+        if repo_type == "legacy":
+            url = source["url"]
+
+            if "url" not in source:
+                raise RuntimeError("Unsupported source specified")
+
+            return LegacyRepository(
+                name,
+                url,
+                config=auth_config,
+                cert=get_cert(auth_config, name),
+                client_cert=get_client_cert(auth_config, name),
+            )
+        elif repo_type == "codeartifact":
+            return CodeArtifactRepository(
+                name,
+                domain=source["domain"],
+                domain_owner=source["domain_owner"],
+                repository=source["repository"],
+                region=source["region"],
+                config=auth_config,
+                cert=get_cert(auth_config, name),
+                client_cert=get_client_cert(auth_config, name),
+            )
 
     @classmethod
     def create_pyproject_from_package(cls, package: ProjectPackage, path: Path) -> None:
