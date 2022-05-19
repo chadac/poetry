@@ -103,7 +103,7 @@ class Authenticator:
     def get_credentials_for_url(self, url: str) -> Tuple[Optional[str], Optional[str]]:
         parsed_url = urllib.parse.urlsplit(url)
 
-        netloc = parsed_url.netloc
+        netloc = parsed_url.netloc + parsed_url.path
 
         credentials = self._credentials.get(netloc, (None, None))
 

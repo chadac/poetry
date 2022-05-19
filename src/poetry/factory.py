@@ -58,14 +58,10 @@ class Factory(BaseFactory):
         # Load local sources
         repositories = {}
         existing_repositories = config.get("repositories", {})
-        print(existing_repositories)
         for source in base_poetry.pyproject.poetry_config.get("source", []):
-            print(source)
             name = source.get("name")
             repositories[name] = dict(source)
-            print(existing_repositories.get(name, {}))
             repositories[name].update(existing_repositories.get(name, {}))
-            print(repositories)
 
         config.merge({"repositories": repositories})
 
@@ -168,15 +164,13 @@ class Factory(BaseFactory):
         if "name" not in source:
             raise RuntimeError("Missing [name] in source.")
 
-        print(source)
-        repo_type = source.get("type", "legacy")
         name = source["name"]
-        if repo_type == "legacy":
-            url = source["url"]
+        url = source["url"]
 
-            if "url" not in source:
-                raise RuntimeError("Unsupported source specified")
+        if "url" not in source:
+            raise RuntimeError("Unsupported source specified")
 
+        if url.startswith('https://') or url.startswith('http://'):
             return LegacyRepository(
                 name,
                 url,
@@ -184,17 +178,16 @@ class Factory(BaseFactory):
                 cert=get_cert(auth_config, name),
                 client_cert=get_client_cert(auth_config, name),
             )
-        elif repo_type == "codeartifact":
+        elif url.startswith('codeartifact://'):
             return CodeArtifactRepository(
                 name,
-                domain=source["domain"],
-                domain_owner=source["domain_owner"],
-                repository=source["repository"],
-                region=source["region"],
+                url,
                 config=auth_config,
                 cert=get_cert(auth_config, name),
-                client_cert=get_client_cert(auth_config, name),
+                client_cert=get_client_cert(auth_config, name)
             )
+        else:
+            raise RuntimeError("Unsupported URL scheme specified")
 
     @classmethod
     def create_pyproject_from_package(cls, package: ProjectPackage, path: Path) -> None:
