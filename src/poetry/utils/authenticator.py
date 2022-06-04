@@ -375,6 +375,9 @@ class Authenticator:
         self.configured_repositories[name] = AuthenticatorRepositoryConfig(name, url)
         self.reset_credentials_cache()
 
+    def get_certs_for_git_url(self, url: str) -> RepositoryCertificateConfig:
+        pass
+
     def get_certs_for_url(self, url: str) -> RepositoryCertificateConfig:
         if url not in self._certs:
             self._certs[url] = self._get_certs_for_url(url)

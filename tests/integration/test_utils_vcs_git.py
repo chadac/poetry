@@ -298,6 +298,46 @@ def test_configured_repository_http_auth(
     spy_get_transport_and_path.assert_called_once()
 
 
+def test_configured_repository_https_certificate(
+    mocker: MockerFixture, source_url: str, config: Config
+) -> None:
+    from poetry.vcs.git import backend
+
+    def CustomPool(*args, **kwargs):
+        pm = urllib3.PoolManager(*args, cert_reqs='CERT_NONE', **kwargs)
+        return pm
+
+    mocker.patch(
+        "urllib3.PoolManager",
+        return_value=CustomPool
+    )
+
+    config.merge(
+        {
+            "repositories": {"git-repo": {"url": source_url}},
+            "certificates": {source_url: {"verify": False}},
+        }
+    )
+
+    mocker.patch(
+        "poetry.vcs.git.backend.get_default_authenticator",
+        return_value=Authenticator(config=config),
+    )
+
+    with Git.clone(url=source_url, branch="0.1") as repo:
+        assert_version(repo, BRANCH_TO_REVISION_MAP["0.1"])
+
+    spy_clone_legacy.assert_not_called()
+
+    spy_get_transport_and_path.assert_called_with(
+        location=source_url,
+    )
+
+    spy_get_transport_and_path.assert_called_once()
+    spy_clone_legacy = mocker.spy(Git, "_clone_legacy")
+    spy_get_transport_and_path = mocker.spy(backend, "get_transport_and_path")
+
+
 def test_username_password_parameter_is_not_passed_to_dulwich(
     mocker: MockerFixture, source_url: str, config: Config
 ) -> None:

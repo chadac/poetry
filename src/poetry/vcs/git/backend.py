@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 from dulwich import porcelain
 from dulwich.client import HTTPUnauthorized
 from dulwich.client import get_transport_and_path
+from dulwich.config import ConfigDict
 from dulwich.config import ConfigFile
 from dulwich.config import parse_submodules
 from dulwich.errors import NotGitRepository
@@ -187,7 +188,16 @@ class Git:
         path: str
 
         kwargs: dict[str, str] = {}
-        credentials = get_default_authenticator().get_credentials_for_git_url(url=url)
+        auth = get_default_authenticator()
+        credentials = auth.get_credentials_for_git_url(url=url)
+        config = ConfigDict()
+
+        if url.startswith("https://"):
+            url_parts
+            repo_cert_config = auth.get_certs_for_url(url)
+            config.set(b"http", b"sslVerify", repo_cert_config.verify)
+            if repo_cert_config.client_cert is not None:
+                config.set(b"http", b"sslCAInfo", repo_cert_config.client_cert.read())
 
         if credentials.password and credentials.username:
             # we do this conditionally as otherwise, dulwich might complain if these
@@ -195,7 +205,7 @@ class Git:
             kwargs["username"] = credentials.username
             kwargs["password"] = credentials.password
 
-        client, path = get_transport_and_path(url, **kwargs)
+        client, path = get_transport_and_path(url, config=config, **kwargs)
 
         with local:
             result: FetchPackResult = client.fetch(
