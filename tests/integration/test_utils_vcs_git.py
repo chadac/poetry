@@ -304,13 +304,10 @@ def test_configured_repository_https_certificate(
     from poetry.vcs.git import backend
 
     def CustomPool(*args, **kwargs):
-        pm = urllib3.PoolManager(*args, cert_reqs='CERT_NONE', **kwargs)
+        pm = urllib3.PoolManager(*args, cert_reqs="CERT_NONE", **kwargs)
         return pm
 
-    mocker.patch(
-        "urllib3.PoolManager",
-        return_value=CustomPool
-    )
+    mocker.patch("urllib3.PoolManager", return_value=CustomPool)
 
     config.merge(
         {
